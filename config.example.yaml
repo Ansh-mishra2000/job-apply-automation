@@ -1,0 +1,209 @@
+# ==============================================================================
+# Job Application Automation Configuration Template
+# Copy this file to 'config.yaml' and fill in your details before running:
+#   cp config.example.yaml config.yaml
+# ==============================================================================
+
+# Search Preferences
+search:
+  # Target job roles to search for across platforms
+  keywords:
+    - "DevOps Engineer"
+    - "Site Reliability Engineer"
+    - "Cloud Infrastructure Engineer"
+    - "Cloud Engineer"
+    - "AWS Engineer"
+    - "Kubernetes Engineer"
+    - "Infrastructure Automation Engineer"
+    - "DevSecOps Engineer"
+    - "Cloud Security Engineer"
+    - "Backend Engineer"
+    - "Python Developer"
+    - "FastAPI Engineer"
+    - "Platform Engineer"
+    - "Cloud Platform Engineer"
+    - "Systems Engineer"
+
+  # Target locations (e.g., ["India"], ["United States"], ["Bengaluru", "Remote"])
+  locations:
+    - "India"
+
+  # Workplace modes: "on-site", "remote", "hybrid"
+  work_modes:
+    - "on-site"
+    - "remote"
+    - "hybrid"
+
+  # Target candidate experience level range (e.g. '0-3', '1-3', '2')
+  experience_years: "0-3"
+
+  # Date posted / freshness filter ('30d', '15d', '7d', '24h')
+  date_posted: "30d"
+
+
+# External Company Website & ATS Application Settings
+external_apply:
+  # Enable automatically filling applications on external company career sites
+  # (Workday, Greenhouse, Lever, SmartRecruiters, BambooHR, SuccessFactors, etc.)
+  enabled: true
+
+  # Fill-and-Review mode:
+  # false = Fills all form fields, uploads resume, and PAUSES on review screen for user confirmation
+  # true  = Submits external application automatically once filled
+  auto_submit: false
+
+  # Account password used when an external ATS (such as Workday) requires candidate account creation:
+  account_password: "YourStrongPassword123!"
+
+  # Supported ATS types:
+  supported_ats:
+    - "workday"
+    - "greenhouse"
+    - "lever"
+    - "smartrecruiters"
+    - "bamboohr"
+    - "successfactors"
+    - "generic"
+
+
+# Application Platforms Settings
+platforms:
+  linkedin:
+    enabled: true
+    # Maximum applications per day (LinkedIn daily limit is typically 50-100)
+    max_daily_applications: 50
+    # Set to false to allow both Easy Apply and external company website applications
+    easy_apply_only: false
+
+  naukri:
+    enabled: true
+    # Maximum applications per day on Naukri (standard account limit is 50)
+    max_daily_applications: 50
+
+
+# Execution & Display Mode Settings
+execution:
+  # Display mode when launching without CLI flags:
+  # - 'prompt': Ask every time ('Should I run in background or visible?')
+  # - 'visible': Always show the browser window
+  # - 'background': Always run headless in the background
+  display_mode: "prompt"
+
+  # Scheduled time for daily cron execution (24-hour format HH:MM, e.g. "09:30")
+  cron_time: "09:30"
+
+  # Delays between actions (in seconds) to mimic human behavior
+  human_delay_min: 3.0
+  human_delay_max: 6.5
+
+
+# Profile & Recruiter Visibility Boost
+profile_refresh:
+  # Automatically re-uploads your latest resume before daily applying so
+  # your profile timestamp updates to 'Active Today' (ranks higher in recruiter searches)
+  auto_update_before_apply: true
+
+
+# Candidate Profile Details for Auto-filling Application Forms
+profile:
+  # ============================================================================
+  # RESUME & COVER LETTER INSTRUCTIONS:
+  # 1. Format: MUST be a valid PDF document (.pdf).
+  # 2. Location: Place your resume in the project root directory (e.g. named 'resume.pdf')
+  #    or provide a relative or absolute path here.
+  # ============================================================================
+  resume_path: "resume.pdf"
+  cover_letter_path: "cover_letter.pdf"
+
+  # Contact Information
+  full_name: "Your Full Name"
+  first_name: "YourFirst"
+  last_name: "YourLast"
+  email: "your.email@example.com"
+  phone: "9876543210"
+  street_address: "Your Street Address"
+  current_city: "Bengaluru"
+  state: "Karnataka"
+  postal_code: "560001"
+  country: "India"
+  linkedin_url: "https://www.linkedin.com/in/your-profile/"
+  github_url: "https://github.com/your-username"
+
+  # Career & Compensation Details
+  # CRITICAL NOTE: Automated job forms require NUMERIC amounts (annual currency).
+  # Do NOT write text like "negotiable" or portal validation will fail.
+  # Examples in INR: "600000" (6 LPA), "1000000" (10 LPA)
+  current_ctc: "600000"
+  expected_ctc: "1000000"
+
+  # Notice period in DAYS (numeric integer: 0, 15, 30, 60, 90)
+  notice_period_days: 30
+
+  # Candidate Experience Duration:
+  # If a recruiter question asks for a skill not explicitly listed in skills_experience below,
+  # the bot falls back to this number.
+  total_experience_years: 2
+  relevant_experience_years: 2
+
+  # Common Screening Answers
+  work_authorization: "Yes"       # Are you legally authorized to work?
+  requires_sponsorship: "No"      # Will you require visa sponsorship?
+  willing_to_relocate: "Yes"      # Are you willing to relocate?
+  remote_work_preference: "Yes"   # Comfortable with remote / hybrid?
+
+  # Diversity & EEO Details (Used on US/Global ATS portals)
+  gender: "Male"                  # Male, Female, Other, Prefer not to say
+  ethnicity: "Asian"              # Asian, South Asian, etc.
+  veteran_status: "No"            # No / Not a protected veteran
+  disability_status: "No"         # No / I do not have a disability / Decline
+
+  # Cover Letter Text Template
+  # Used if an application provides a text box rather than a document upload:
+  cover_letter: |
+    Dear Hiring Manager,
+
+    I am writing to express my strong interest in the {job_title} opportunity at {company}. With hands-on experience in DevOps, Cloud Infrastructure, and Site Reliability Engineering, I specialize in building, automating, and maintaining high-availability environments across AWS, Kubernetes, Docker, and CI/CD pipelines.
+
+    Thank you for your time and consideration.
+
+    Sincerely,
+    Your Full Name
+    your.email@example.com | +91 9876543210
+
+  # Skill-specific years of experience:
+  # Used when an application portal asks: "How many years of experience do you have with [Skill]?"
+  skills_experience:
+    # Cloud Computing
+    aws: 2
+    amazon eks: 2
+    ec2: 2
+    s3: 2
+    rds: 2
+    cloud: 2
+
+    # Containers & Orchestration
+    kubernetes: 2
+    k8s: 2
+    docker: 2
+    helm: 2
+
+    # Infrastructure as Code & CI/CD
+    terraform: 2
+    jenkins: 2
+    github actions: 2
+    git: 2
+    ansible: 1
+    ci/cd: 2
+
+    # Observability & Monitoring
+    prometheus: 2
+    grafana: 2
+    monitoring: 2
+    sre: 2
+
+    # Scripting & Languages
+    python: 2
+    fastapi: 2
+    bash: 2
+    linux: 2
+    sql: 2

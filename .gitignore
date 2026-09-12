@@ -1,0 +1,26 @@
+# Python virtual environments & bytecode
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# User personal configuration & backups (Never commit private details)
+config.yaml
+*.backup
+*.live_backup
+*backup*
+*.bak
+backup_personal_data/
+
+# Application runtime databases, session cookies, and logs
+data/browser_profiles/
+data/logs/
+data/jobs.db
+
+# Candidate document files (PDFs)
+*.pdf
+
+# Environment secrets
+.env
+
