@@ -461,7 +461,7 @@ Would you like to automatically apply to these 3 jobs now? [y/N]: <span class="t
 
     <p>This automatically installs this daily schedule entry into your system <code>crontab</code>:</p>
     <div class="cmd-block">
-      30 9 * * * /home/ansh-mishra/Desktop/job apply script/run_daily.sh --headless
+      30 9 * * * /path/to/job-apply-automation/run_daily.sh --headless
     </div>
 
     <div class="alert-box alert-info">

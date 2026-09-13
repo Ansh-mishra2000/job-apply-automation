@@ -313,7 +313,54 @@ class TestJobFilter(unittest.TestCase):
         custom_url = custom_linkedin._build_search_url("DevOps Engineer", "Noida")
         self.assertIn("f_WT=2", custom_url)
 
+    def test_10_multi_page_pagination_and_apply_sorting(self):
+        """Tests that LinkedIn and Naukri build correct multi-page URLs and prioritize native apply."""
+        from unittest.mock import MagicMock
+        from platforms.linkedin import LinkedInPlatform
+        from platforms.naukri import NaukriPlatform
+        from config_loader import load_config
+
+        config = load_config()
+
+        # 1. LinkedIn Multi-Page URLs and f_AL=true
+        linkedin = LinkedInPlatform(config, MagicMock(), headless=True)
+        url_p0 = linkedin._build_search_url("DevOps Engineer", "Noida", page_no=0)
+        url_p1 = linkedin._build_search_url("DevOps Engineer", "Noida", page_no=1)
+        url_p2 = linkedin._build_search_url("DevOps Engineer", "Noida", page_no=2)
+
+        self.assertIn("start=0", url_p0)
+        self.assertIn("start=25", url_p1)
+        self.assertIn("start=50", url_p2)
+        self.assertIn("f_AL=true", url_p0, "LinkedIn search must strictly include f_AL=true for Easy Apply")
+
+        # 2. Naukri Multi-Page URLs
+        naukri = NaukriPlatform(config, MagicMock(), headless=True)
+        naukri_p1 = naukri._build_search_url("DevOps Engineer", "Noida", page_no=1)
+        naukri_p2 = naukri._build_search_url("DevOps Engineer", "Noida", page_no=2)
+
+        self.assertNotIn("-2", naukri_p1)
+        self.assertNotIn("pageNo=2", naukri_p1)
+        self.assertIn("-2?", naukri_p2)
+        self.assertIn("pageNo=2", naukri_p2)
+
+        # 3. Naukri Job Sorting (Native 1-click apply must precede external redirect hints)
+        jobs = [
+            {"title": "DevOps Job A", "is_external_hint": True, "is_priority": False, "skill_match_count": 5},
+            {"title": "DevOps Job B", "is_external_hint": False, "is_priority": False, "skill_match_count": 2},
+            {"title": "DevOps Job C", "is_external_hint": False, "is_priority": True, "skill_match_count": 1},
+        ]
+        sorted_jobs = sorted(
+            jobs,
+            key=lambda j: (not j.get("is_external_hint", False), j["is_priority"], j["skill_match_count"]),
+            reverse=True,
+        )
+        # First should be Job C (Native + Priority), second Job B (Native), last Job A (External)
+        self.assertEqual(sorted_jobs[0]["title"], "DevOps Job C")
+        self.assertEqual(sorted_jobs[1]["title"], "DevOps Job B")
+        self.assertEqual(sorted_jobs[2]["title"], "DevOps Job A")
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
+
 

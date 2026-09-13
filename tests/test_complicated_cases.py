@@ -60,11 +60,11 @@ class TestComplicatedCases(unittest.TestCase):
 
         github_q = "GitHub profile link or repository"
         ans_github = self.form_filler.get_answer_for_text_question(github_q)
-        self.assertEqual(ans_github, "https://github.com/anshmishra")
+        self.assertEqual(ans_github, str(self.config["profile"].get("github_url", "")))
 
         linkedin_q = "LinkedIn Profile URL"
         ans_linkedin = self.form_filler.get_answer_for_text_question(linkedin_q)
-        self.assertEqual(ans_linkedin, self.config["profile"].get("linkedin_url", "https://www.linkedin.com/in/anshmishra/"))
+        self.assertEqual(ans_linkedin, str(self.config["profile"].get("linkedin_url", "")))
 
         pitch_q = "Briefly describe your DevOps experience and key achievements"
         ans_pitch = self.form_filler.get_answer_for_text_question(pitch_q)

@@ -128,6 +128,7 @@ class ExternalATSHandler:
         logger.info(">>> ACTION REQUIRED: Inspect the open browser window to review the form.")
         logger.info("=" * 70)
 
+        timeout = float(self.config.get("external_apply", {}).get("review_timeout_seconds", 20))
         try:
             # Bring browser to front if possible
             try:
@@ -136,10 +137,30 @@ class ExternalATSHandler:
                 pass
 
             prompt_msg = (
-                f"\n[USER CONFIRMATION REQUIRED] Press [ENTER] in this terminal to submit application for {company}, "
+                f"\n[USER CONFIRMATION REQUIRED (Timeout: {int(timeout)}s)] Press [ENTER] in this terminal to submit application for {company}, "
                 f"or type 's' / 'skip' to skip: "
             )
-            resp = input(prompt_msg).strip().lower()
+
+            resp = ""
+            import builtins
+            import select
+            import sys
+            from unittest.mock import Mock
+
+            # If input has been mocked (e.g. in test suites), delegate directly to mocked input
+            if isinstance(builtins.input, Mock) or type(builtins.input).__name__ != "builtin_function_or_method":
+                resp = builtins.input(prompt_msg).strip().lower()
+            elif sys.stdin.isatty() and hasattr(select, "select") and timeout > 0:
+                sys.stdout.write(prompt_msg)
+                sys.stdout.flush()
+                rlist, _, _ = select.select([sys.stdin], [], [], timeout)
+                if rlist:
+                    resp = sys.stdin.readline().strip().lower()
+                else:
+                    logger.info(f"Confirmation timeout ({int(timeout)}s) reached for '{company}'. Automatically proceeding with submission...")
+                    return True
+            else:
+                resp = builtins.input(prompt_msg).strip().lower()
 
             if resp in ("s", "skip", "no", "n", "cancel"):
                 logger.warning(f"Application for '{company}' skipped by user.")

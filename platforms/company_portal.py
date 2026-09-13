@@ -385,7 +385,7 @@ class CompanyPortalScanner:
         )
 
         applied_count = 0
-        cl_path = self.config.get("profile", {}).get("cover_letter_path", "Ansh_Mishra_Cover_Letter.pdf")
+        cl_path = self.config.get("profile", {}).get("cover_letter_path", "cover_letter.pdf")
         resolved_cl = Path(cl_path)
         if not resolved_cl.is_absolute():
             resolved_cl = Path(__file__).parent.parent.resolve() / resolved_cl

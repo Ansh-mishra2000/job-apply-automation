@@ -198,11 +198,11 @@ class FormFiller:
 
         # 17. LinkedIn URL / Profile
         if re.search(r"linkedin.*(url|profile|link)", text) or (re.search(r"linkedin", text) and "http" in text) or re.search(r"linkedin", text):
-            return str(self.profile.get("linkedin_url", "https://www.linkedin.com/in/anshmishra/"))
+            return str(self.profile.get("linkedin_url", ""))
 
         # 18. GitHub / Portfolio / Website URL
         if re.search(r"github|portfolio|website|blog|repository|personal\s*link", text):
-            return str(self.profile.get("github_url", "https://github.com/anshmishra"))
+            return str(self.profile.get("github_url", ""))
 
         # 19. Graduation / Passing Year
         if re.search(r"graduation\s*year|passing\s*year|year\s*of\s*completion", text):

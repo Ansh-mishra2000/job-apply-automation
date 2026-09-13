@@ -71,7 +71,7 @@ graph TD
 
 ### 1. Clone the Repository
 ```bash
-git clone https://github.com/your-username/job-apply-automation.git
+git clone https://github.com/Ansh-mishra2000/job-apply-automation.git
 cd job-apply-automation
 ```
 

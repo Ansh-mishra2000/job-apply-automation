@@ -40,6 +40,10 @@ search:
   # Date posted / freshness filter ('30d', '15d', '7d', '24h')
   date_posted: "30d"
 
+  # Number of search result pages to scan per keyword (1 page = ~20-25 jobs)
+  # Deep pagination searches up to 3-5 pages to ensure a massive volume of unapplied jobs
+  max_pages_per_keyword: 3
+
 
 # External Company Website & ATS Application Settings
 external_apply:
@@ -51,6 +55,9 @@ external_apply:
   # false = Fills all form fields, uploads resume, and PAUSES on review screen for user confirmation
   # true  = Submits external application automatically once filled
   auto_submit: false
+
+  # Maximum seconds to wait for user terminal confirmation before automatically proceeding (prevents freezing indefinitely)
+  review_timeout_seconds: 20
 
   # Account password used when an external ATS (such as Workday) requires candidate account creation:
   account_password: "YourStrongPassword123!"
@@ -72,8 +79,8 @@ platforms:
     enabled: true
     # Maximum applications per day (LinkedIn daily limit is typically 50-100)
     max_daily_applications: 50
-    # Set to false to allow both Easy Apply and external company website applications
-    easy_apply_only: false
+    # Set to true for rapid-fire 1-click Easy Apply without external pauses (takes ~4s per job)
+    easy_apply_only: true
 
   naukri:
     enabled: true
