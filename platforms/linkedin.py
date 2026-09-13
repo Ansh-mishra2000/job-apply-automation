@@ -166,20 +166,50 @@ class LinkedInPlatform(BasePlatform):
 
         return base + "&".join(params)
 
-    def _check_limit_modal(self, page: Page) -> bool:
-        """Checks if LinkedIn daily Easy Apply limit modal or toast is present."""
+    def _check_limit_modal(self, page: Page, detail_pane: Optional[Any] = None) -> bool:
+        """
+        Checks if LinkedIn daily Easy Apply limit is present.
+        Supports:
+        1. Explicit popup modals / alerts (.artdeco-modal, .ip-fuse-limit-alert, [role='alertdialog'], div[role='dialog'])
+        2. Inline feedback banners & alerts (.artdeco-inline-feedback, [class*='feedback'], [class*='alert'])
+        3. Inline notice on job detail top card (e.g. 'We limit daily submissions to maintain quality and prevent bots... Save this job and apply tomorrow.')
+        4. Disabled Easy Apply button accompanied by limit / bot notice
+        """
         limit_patterns = [
-            "limit for today",
+            "limit daily submissions",
+            "we limit daily submissions",
+            "prevent bots",
+            "save this job and apply tomorrow",
+            "apply tomorrow",
             "reached the easy apply limit",
-            "maximum number of applications",
             "exceeded the daily application limit",
+            "maximum number of applications",
+            "limit for today",
+            "daily application limit",
+            "daily submission limit",
         ]
         text_content = ""
         try:
-            modals = page.locator(".artdeco-modal, .ip-fuse-limit-alert, [role='alertdialog']").all()
+            # 1. Modals & Dialogs
+            modals = page.locator(".artdeco-modal, .ip-fuse-limit-alert, [role='alertdialog'], div[role='dialog']").all()
             for m in modals:
                 if m.is_visible():
                     text_content += " " + m.inner_text().lower()
+
+            # 2. Inline alerts & feedback banners
+            alerts = page.locator(".artdeco-inline-feedback, .artdeco-alert, [class*='inline-feedback'], [class*='limit-alert']").all()
+            for a in alerts:
+                if a.is_visible():
+                    text_content += " " + a.inner_text().lower()
+
+            # 3. Job detail top card / pane text
+            if detail_pane and hasattr(detail_pane, "is_visible") and detail_pane.is_visible():
+                text_content += " " + detail_pane.inner_text().lower()
+            else:
+                top_cards = page.locator(".jobs-details__main-content, div[data-view-name='job-details-top-card'], .jobs-unified-top-card, .job-view-layout").all()
+                for tc in top_cards:
+                    if tc.is_visible():
+                        text_content += " " + tc.inner_text().lower()
         except Exception:
             pass
 
@@ -187,6 +217,7 @@ class LinkedInPlatform(BasePlatform):
             if pat in text_content:
                 return True
         return False
+
 
     def _ensure_workplace_types(self, page: Page):
         """
@@ -679,6 +710,16 @@ class LinkedInPlatform(BasePlatform):
                 except Exception:
                     pass
 
+                # Check if LinkedIn daily submission limit notice is visible in detail pane or page
+                if self._check_limit_modal(page, detail_pane=detail_pane):
+                    logger.warning(
+                        "LinkedIn daily application limit reached! "
+                        "('We limit daily submissions to maintain quality and prevent bots... Save this job and apply tomorrow.')"
+                    )
+                    self.limit_reached = True
+                    self.db.mark_daily_limit_reached("linkedin")
+                    return applied_this_page, False
+
                 apply_btn = detail_pane.locator(
                     "button.jobs-apply-button, a.jobs-apply-button, "
                     "button[data-live-test-job-apply-button], a[data-live-test-job-apply-button], "
@@ -706,6 +747,26 @@ class LinkedInPlatform(BasePlatform):
                     or "easy apply" in btn_text
                     or has_in_bug
                 )
+
+                # Check if Easy Apply button is disabled due to daily limit
+                btn_disabled = (
+                    apply_btn.is_disabled()
+                    or apply_btn.get_attribute("disabled") is not None
+                    or apply_btn.get_attribute("aria-disabled") == "true"
+                    or "disabled" in (apply_btn.get_attribute("class") or "").lower()
+                )
+                if is_easy_apply and btn_disabled:
+                    if self._check_limit_modal(page, detail_pane=detail_pane):
+                        logger.warning(
+                            f"LinkedIn Easy Apply button is disabled due to daily submission limit ('Save this job and apply tomorrow'). "
+                            f"Stopping LinkedIn applications for today."
+                        )
+                        self.limit_reached = True
+                        self.db.mark_daily_limit_reached("linkedin")
+                        return applied_this_page, False
+                    else:
+                        logger.info(f"Easy Apply button is disabled for '{job_title}' at '{company_name}'. Skipping.")
+                        continue
 
                 if not is_easy_apply:
                     easy_apply_only = self.linkedin_cfg.get("easy_apply_only", True)
@@ -963,6 +1024,10 @@ class LinkedInPlatform(BasePlatform):
                             total_applied_this_run=total_applied_this_run,
                         )
                         total_applied_this_run += applied_on_page
+
+                        if self.limit_reached:
+                            logger.warning("LinkedIn daily application limit reached! Stopping LinkedIn execution for today.")
+                            break
 
                         if not has_more:
                             logger.info(f"No further eligible LinkedIn jobs on Page {page_idx + 1}. Advancing.")

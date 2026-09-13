@@ -190,6 +190,42 @@ class TestStopConditions(unittest.TestCase):
         self.assertTrue(self.db.is_job_applied("12345", "linkedin"))
         self.assertFalse(self.db.is_job_applied("99999", "linkedin"))
 
+    def test_stop_condition_06_linkedin_anti_bot_daily_submission_limit_banner(self):
+        """
+        STOP CONDITION 6 (INLINE ANTI-BOT LIMIT):
+        When LinkedIn shows the inline notice:
+        'We limit daily submissions to maintain quality and prevent bots, helping each application get the right attention. Save this job and apply tomorrow.'
+        the bot MUST detect it, set limit_reached = True, mark the database, and stop cleanly.
+        """
+        lp = LinkedInPlatform(self.test_config, self.db, headless=True)
+        self.assertFalse(lp.limit_reached)
+        self.assertFalse(self.db.is_daily_limit_reached("linkedin"))
+
+        mock_page = MagicMock()
+        mock_detail_pane = MagicMock()
+        mock_detail_pane.is_visible.return_value = True
+        mock_detail_pane.inner_text.return_value = (
+            "Business Development Executive - Aviation\n"
+            "Autotrade Design Pvt. Ltd.\n"
+            "Easy Apply Save\n"
+            "We limit daily submissions to maintain quality and prevent bots, "
+            "helping each application get the right attention. Save this job and apply tomorrow.\n"
+        )
+
+        mock_page.locator.return_value.all.return_value = []
+
+        is_limit = lp._check_limit_modal(mock_page, detail_pane=mock_detail_pane)
+        self.assertTrue(is_limit, "Inline bot limit message must be recognized by _check_limit_modal")
+
+        # Simulate detecting limit and recording in DB
+        if is_limit:
+            lp.limit_reached = True
+            self.db.mark_daily_limit_reached("linkedin")
+
+        self.assertTrue(lp.limit_reached)
+        self.assertTrue(self.db.is_daily_limit_reached("linkedin"))
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
+
