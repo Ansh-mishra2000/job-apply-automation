@@ -17,6 +17,9 @@ from config_loader import load_config, get_resume_path
 from database import JobDatabase
 from platforms.linkedin import LinkedInPlatform
 from platforms.naukri import NaukriPlatform
+from platforms.indeed import IndeedPlatform
+from platforms.instahyre import InstahyrePlatform
+from platforms.wellfound import WellfoundPlatform
 from platforms.workday_portal import WorkdayPortalScanner
 from scheduler import run_scheduler
 from utils.ats_filler import ExternalATSHandler
@@ -148,6 +151,9 @@ def execute_job_apply(
         if platform_name in ("all", "linkedin") and config.get("platforms", {}).get("linkedin", {}).get("enabled", True):
             lp = LinkedInPlatform(config, db, headless=headless)
             lp.update_resume()
+        if platform_name in ("all", "indeed") and config.get("platforms", {}).get("indeed", {}).get("enabled", True):
+            ip = IndeedPlatform(config, db, headless=headless)
+            ip.update_resume()
 
     # Initialize active platforms and verify daily quotas
     active_platforms: List[str] = []
@@ -172,16 +178,49 @@ def execute_job_apply(
         else:
             active_platforms.append("naukri")
 
+    indeed_cfg = config.get("platforms", {}).get("indeed", {})
+    indeed_enabled = indeed_cfg.get("enabled", True) and platform_name in ("all", "indeed")
+    indeed_max = indeed_cfg.get("max_daily_applications", 50)
+    indeed_today = db.get_daily_applied_count("indeed")
+    if indeed_enabled:
+        if db.is_daily_limit_reached("indeed") or indeed_today >= indeed_max:
+            logger.info(f"Indeed daily quota already reached for today ({indeed_today}/{indeed_max}). Skipping Indeed.")
+        else:
+            active_platforms.append("indeed")
+
+    instahyre_cfg = config.get("platforms", {}).get("instahyre", {})
+    instahyre_enabled = instahyre_cfg.get("enabled", False) and platform_name in ("all", "instahyre")
+    instahyre_max = instahyre_cfg.get("max_daily_applications", 50)
+    instahyre_today = db.get_daily_applied_count("instahyre")
+    if instahyre_enabled:
+        if db.is_daily_limit_reached("instahyre") or instahyre_today >= instahyre_max:
+            logger.info(f"Instahyre daily quota reached ({instahyre_today}/{instahyre_max}). Skipping Instahyre.")
+        else:
+            active_platforms.append("instahyre")
+
+    wellfound_cfg = config.get("platforms", {}).get("wellfound", {})
+    wellfound_enabled = wellfound_cfg.get("enabled", False) and platform_name in ("all", "wellfound")
+    wellfound_max = wellfound_cfg.get("max_daily_applications", 50)
+    wellfound_today = db.get_daily_applied_count("wellfound")
+    if wellfound_enabled:
+        if db.is_daily_limit_reached("wellfound") or wellfound_today >= wellfound_max:
+            logger.info(f"Wellfound daily quota reached ({wellfound_today}/{wellfound_max}). Skipping Wellfound.")
+        else:
+            active_platforms.append("wellfound")
+
     if not active_platforms:
-        logger.warning("Both LinkedIn and Naukri have reached their daily quotas for today. Stopping.")
+        logger.warning("All target platforms have reached their daily quotas for today. Stopping.")
         show_stats(db)
         return
 
-    # Dual-Platform Cascading & Interleaved Execution
+    # Multi-Platform Cascading & Interleaved Execution
     logger.info(f"Active platforms for today's run: {', '.join(p.upper() for p in active_platforms)}")
 
     linkedin_platform = LinkedInPlatform(config, db, headless=headless) if "linkedin" in active_platforms else None
     naukri_platform = NaukriPlatform(config, db, headless=headless) if "naukri" in active_platforms else None
+    indeed_platform = IndeedPlatform(config, db, headless=headless) if "indeed" in active_platforms else None
+    instahyre_platform = InstahyrePlatform(config, db, headless=headless) if "instahyre" in active_platforms else None
+    wellfound_platform = WellfoundPlatform(config, db, headless=headless) if "wellfound" in active_platforms else None
 
     # Cascade Left-to-Right: First try fresh 24h postings. If quota remaining, cascade to 7d.
     for t_window in time_windows:
@@ -236,6 +275,61 @@ def execute_job_apply(
                         logger.warning("Naukri daily application limit reached! Closed Naukri for today. Continuing with remaining platforms.")
                         if "naukri" in active_platforms:
                             active_platforms.remove("naukri")
+
+            # 3. Apply on Indeed for this role
+            if "indeed" in active_platforms and indeed_platform:
+                cur_i_count = db.get_daily_applied_count("indeed")
+                if db.is_daily_limit_reached("indeed") or cur_i_count >= indeed_max or indeed_platform.limit_reached:
+                    logger.warning(f"Indeed daily limit exceeded ({cur_i_count}/{indeed_max}). Closing Indeed portal for today.")
+                    if "indeed" in active_platforms:
+                        active_platforms.remove("indeed")
+                else:
+                    logger.step(f"--- Applying on Indeed for '{keyword}' ({t_window}) ---")
+                    indeed_platform.run(
+                        keyword_override=[keyword],
+                        location_override=search_locations,
+                        time_filter_override=t_window,
+                    )
+                    if indeed_platform.limit_reached or db.is_daily_limit_reached("indeed") or db.get_daily_applied_count("indeed") >= indeed_max:
+                        logger.warning("Indeed daily application limit reached! Closed Indeed for today. Continuing with remaining platforms.")
+                        if "indeed" in active_platforms:
+                            active_platforms.remove("indeed")
+
+            # 4. Apply on Instahyre for this role
+            if "instahyre" in active_platforms and instahyre_platform:
+                cur_in_count = db.get_daily_applied_count("instahyre")
+                if db.is_daily_limit_reached("instahyre") or cur_in_count >= instahyre_max or instahyre_platform.limit_reached:
+                    logger.warning(f"Instahyre daily limit exceeded ({cur_in_count}/{instahyre_max}). Closing Instahyre for today.")
+                    if "instahyre" in active_platforms:
+                        active_platforms.remove("instahyre")
+                else:
+                    logger.step(f"--- Applying on Instahyre for '{keyword}' ---")
+                    instahyre_platform.run(
+                        keyword_override=[keyword],
+                        location_override=search_locations,
+                    )
+                    if instahyre_platform.limit_reached or db.is_daily_limit_reached("instahyre") or db.get_daily_applied_count("instahyre") >= instahyre_max:
+                        logger.warning("Instahyre daily limit reached! Continuing with remaining platforms.")
+                        if "instahyre" in active_platforms:
+                            active_platforms.remove("instahyre")
+
+            # 5. Apply on Wellfound for this role
+            if "wellfound" in active_platforms and wellfound_platform:
+                cur_wf_count = db.get_daily_applied_count("wellfound")
+                if db.is_daily_limit_reached("wellfound") or cur_wf_count >= wellfound_max or wellfound_platform.limit_reached:
+                    logger.warning(f"Wellfound daily limit exceeded ({cur_wf_count}/{wellfound_max}). Closing Wellfound for today.")
+                    if "wellfound" in active_platforms:
+                        active_platforms.remove("wellfound")
+                else:
+                    logger.step(f"--- Applying on Wellfound for '{keyword}' ---")
+                    wellfound_platform.run(
+                        keyword_override=[keyword],
+                        location_override=search_locations,
+                    )
+                    if wellfound_platform.limit_reached or db.is_daily_limit_reached("wellfound") or db.get_daily_applied_count("wellfound") >= wellfound_max:
+                        logger.warning("Wellfound daily limit reached! Continuing with remaining platforms.")
+                        if "wellfound" in active_platforms:
+                            active_platforms.remove("wellfound")
 
     if not active_platforms:
         logger.success("Daily limits reached on all active platforms for today. Application cycle complete.")
@@ -295,6 +389,33 @@ def execute_job_list(
                     n_jobs = naukri.list_jobs(keyword, loc, time_filter=t_window)
                     for j in n_jobs:
                         key = (j["id"], "naukri")
+                        if key not in seen_keys:
+                            seen_keys.add(key)
+                            all_jobs.append(j)
+
+                if platform_name in ("all", "indeed"):
+                    indeed = IndeedPlatform(config, db, headless=headless)
+                    i_jobs = indeed.list_jobs(keyword, loc, time_filter=t_window)
+                    for j in i_jobs:
+                        key = (j["id"], "indeed")
+                        if key not in seen_keys:
+                            seen_keys.add(key)
+                            all_jobs.append(j)
+
+                if platform_name in ("all", "instahyre"):
+                    instahyre = InstahyrePlatform(config, db, headless=headless)
+                    in_jobs = instahyre.list_jobs(keyword, loc, time_filter=t_window)
+                    for j in in_jobs:
+                        key = (j["id"], "instahyre")
+                        if key not in seen_keys:
+                            seen_keys.add(key)
+                            all_jobs.append(j)
+
+                if platform_name in ("all", "wellfound"):
+                    wellfound = WellfoundPlatform(config, db, headless=headless)
+                    wf_jobs = wellfound.list_jobs(keyword, loc, time_filter=t_window)
+                    for j in wf_jobs:
+                        key = (j["id"], "wellfound")
                         if key not in seen_keys:
                             seen_keys.add(key)
                             all_jobs.append(j)
@@ -631,6 +752,18 @@ def execute_resume_update(platform_name: str = "all", headless: bool = False):
         lp = LinkedInPlatform(config, db, headless=headless)
         lp.update_resume()
 
+    if platform_name in ("all", "indeed") and config.get("platforms", {}).get("indeed", {}).get("enabled", True):
+        ip = IndeedPlatform(config, db, headless=headless)
+        ip.update_resume()
+
+    if platform_name in ("all", "instahyre") and config.get("platforms", {}).get("instahyre", {}).get("enabled", True):
+        in_p = InstahyrePlatform(config, db, headless=headless)
+        in_p.update_resume()
+
+    if platform_name in ("all", "wellfound") and config.get("platforms", {}).get("wellfound", {}).get("enabled", True):
+        wf_p = WellfoundPlatform(config, db, headless=headless)
+        wf_p.update_resume()
+
     return True
 
 
@@ -649,6 +782,21 @@ def handle_login(platform_name: str):
         np = NaukriPlatform(config, db, headless=False)
         np.login()
 
+    if platform_name in ("all", "indeed"):
+        logger.step("Initiating Indeed interactive login...")
+        ip = IndeedPlatform(config, db, headless=False)
+        ip.login()
+
+    if platform_name in ("all", "instahyre"):
+        logger.step("Initiating Instahyre interactive login...")
+        in_p = InstahyrePlatform(config, db, headless=False)
+        in_p.login()
+
+    if platform_name in ("all", "wellfound"):
+        logger.step("Initiating Wellfound interactive login...")
+        wf_p = WellfoundPlatform(config, db, headless=False)
+        wf_p.login()
+
 
 def show_stats(
     db: JobDatabase,
@@ -665,7 +813,7 @@ def show_stats(
     table.add_column("Applied Today", justify="center", style="bold green")
     table.add_column("Limit Status", justify="center")
 
-    for p in ["linkedin", "naukri"]:
+    for p in ["linkedin", "naukri", "indeed", "instahyre", "wellfound"]:
         p_stats = stats["today"].get(p, {"count": 0, "limit_reached": False})
         limit_badge = "[bold red]LIMIT REACHED[/bold red]" if p_stats["limit_reached"] else "[bold cyan]ACTIVE[/bold cyan]"
         table.add_row(p.capitalize(), str(p_stats["count"]), limit_badge)
@@ -773,9 +921,81 @@ def setup_cron():
         console.print(f"\nTo install manually, run:\n[bold yellow](crontab -l 2>/dev/null; echo \"{cron_line}\") | crontab -[/bold yellow]\n")
 
 
+def execute_test_ai():
+    """Tests Gemini AI connection and demonstrates dynamic screening question answering."""
+    from utils.ai_agent import AIAgent
+    config = load_config()
+    agent = AIAgent(config)
+    console.print(Panel("[bold]AI Screening Question Resolver Diagnostics[/bold]", border_style="cyan"))
+    if not agent.is_available():
+        logger.warning(
+            "AI Agent is currently disabled or GEMINI_API_KEY is not configured.\n"
+            "The bot will use regex heuristics (FormFiller) for form filling.\n"
+            "To enable Gemini AI:\n"
+            "  1. Set 'enabled: true' under 'ai' in config.yaml\n"
+            "  2. Provide 'api_key: \"YOUR_KEY\"' or export GEMINI_API_KEY=\"YOUR_KEY\""
+        )
+    else:
+        logger.info(f"Gemini AI is ACTIVE using model: [cyan]{agent.model}[/cyan]")
+        logger.step("Testing dynamic screening question answer...")
+        q = "Describe your production Kubernetes cluster troubleshooting experience."
+        ans = agent.answer_screening_question(q, job_title="DevOps Engineer", company="Google")
+        console.print(f"[bold green]Question:[/bold green] {q}")
+        console.print(f"[bold cyan]AI Answer:[/bold cyan] {ans}\n")
+
+
+def execute_test_notify():
+    """Tests mobile push alerts via Telegram and Discord."""
+    from utils.notifier import NotificationManager
+    config = load_config()
+    notifier = NotificationManager(config)
+    console.print(Panel("[bold]Mobile & Webhook Push Notification Diagnostics[/bold]", border_style="cyan"))
+    if not notifier.is_enabled():
+        logger.warning(
+            "Push notifications are currently disabled.\n"
+            "To enable phone alerts:\n"
+            "  • Telegram: Set 'enabled: true', provide 'bot_token' and 'chat_id' in config.yaml\n"
+            "  • Discord: Set 'enabled: true' and provide 'webhook_url' in config.yaml"
+        )
+    else:
+        logger.step("Sending test notification...")
+        ok = notifier.send_message(
+            "This is a test notification from your Autonomous Job Application Suite! 🚀\n"
+            "Everything is configured correctly and ready to send live job updates.",
+            title="🔔 Notification Test Passed",
+        )
+        if ok:
+            logger.success("Test notification delivered successfully! Check your phone / channel.")
+        else:
+            logger.error("Failed to deliver test notification. Check token/chat_id/webhook.")
+
+
+def execute_track_emails():
+    """Scans candidate inbox for recruiter interview invites and coding test links."""
+    from utils.email_tracker import EmailTracker
+    config = load_config()
+    db = JobDatabase()
+    tracker = EmailTracker(config, db)
+    console.print(Panel("[bold]Recruitment Email & Interview Lifecycle Tracker[/bold]", border_style="cyan"))
+    if not tracker.is_configured():
+        logger.warning(
+            "Email tracker is currently disabled or missing credentials.\n"
+            "To enable automatic interview & HackerRank tracking:\n"
+            "  1. Set 'enabled: true' under 'email_tracker' in config.yaml\n"
+            "  2. Provide your 'email' and Gmail App Password ('app_password')"
+        )
+        return
+
+    results = tracker.scan_inbox()
+    if results:
+        logger.success(f"Matched and updated {len(results)} recruiter communication(s) in your database!")
+    else:
+        logger.info("Inbox scan complete. No new recruiter interview or assessment links detected.")
+
+
 def main():
     parser = argparse.ArgumentParser(
-        description="Automated job application system for LinkedIn & Naukri."
+        description="Automated job application system for LinkedIn, Naukri & Indeed."
     )
     subparsers = parser.add_subparsers(dest="command", help="Subcommand to execute")
 
@@ -783,7 +1003,7 @@ def main():
     run_parser = subparsers.add_parser("run", help="Run automated job applications immediately")
     run_parser.add_argument(
         "--platform",
-        choices=["linkedin", "naukri", "all"],
+        choices=["linkedin", "naukri", "indeed", "instahyre", "wellfound", "all"],
         default="all",
         help="Target platform (default: all)",
     )
@@ -832,7 +1052,7 @@ def main():
     )
     list_parser.add_argument(
         "--platform",
-        choices=["linkedin", "naukri", "all"],
+        choices=["linkedin", "naukri", "indeed", "instahyre", "wellfound", "all"],
         default="all",
         help="Platform to inspect (default: all)",
     )
@@ -862,7 +1082,7 @@ def main():
     login_parser = subparsers.add_parser("login", help="Open visible browser to log into platforms")
     login_parser.add_argument(
         "--platform",
-        choices=["linkedin", "naukri", "all"],
+        choices=["linkedin", "naukri", "indeed", "instahyre", "wellfound", "all"],
         default="all",
         help="Platform to log in (default: all)",
     )
@@ -882,9 +1102,9 @@ def main():
     )
     stats_parser.add_argument(
         "--platform",
-        choices=["linkedin", "naukri", "all"],
+        choices=["linkedin", "naukri", "indeed", "instahyre", "wellfound", "all"],
         default="all",
-        help="Filter applied jobs by platform (linkedin, naukri, all)",
+        help="Filter applied jobs by platform (linkedin, naukri, indeed, instahyre, wellfound, all)",
     )
     stats_parser.add_argument(
         "--export",
@@ -910,7 +1130,7 @@ def main():
     )
     update_resume_parser.add_argument(
         "--platform",
-        choices=["linkedin", "naukri", "all"],
+        choices=["linkedin", "naukri", "indeed", "instahyre", "wellfound", "all"],
         default="all",
         help="Platform to update (default: all)",
     )
@@ -1040,11 +1260,29 @@ def main():
         help="Run with visible browser window",
     )
 
+    # 11. test-ai command
+    subparsers.add_parser("test-ai", help="Test Gemini AI screening question resolver and connectivity")
+
+    # 12. test-notify command
+    subparsers.add_parser("test-notify", help="Test Telegram and Discord push notification delivery")
+
+    # 13. track-emails command
+    subparsers.add_parser("track-emails", help="Scan candidate inbox for recruiter interview invites and coding test links")
+
     args = parser.parse_args()
     config = load_config()
     db = JobDatabase()
 
-    if args.command == "run":
+    if args.command == "test-ai":
+        execute_test_ai()
+
+    elif args.command == "test-notify":
+        execute_test_notify()
+
+    elif args.command == "track-emails":
+        execute_track_emails()
+
+    elif args.command == "run":
         headless = determine_headless_mode(args, config)
         execute_job_apply(
             platform_name=args.platform,

@@ -44,6 +44,9 @@ search:
   # Deep pagination searches up to 3-5 pages to ensure a massive volume of unapplied jobs
   max_pages_per_keyword: 3
 
+  # Automatically filter out third-party consultancies and staffing agencies
+  exclude_staffing_agencies: true
+
 
 # External Company Website & ATS Application Settings
 external_apply:
@@ -87,6 +90,23 @@ platforms:
     # Maximum applications per day on Naukri (standard account limit is 50)
     max_daily_applications: 50
 
+  indeed:
+    enabled: true
+    # Maximum applications per day on Indeed (daily quota limit ~50)
+    max_daily_applications: 50
+    # Set to true for rapid-fire "Easily Apply" jobs
+    easily_apply_only: true
+
+  instahyre:
+    enabled: true
+    # Maximum applications per day on Instahyre (product tech companies)
+    max_daily_applications: 30
+
+  wellfound:
+    enabled: true
+    # Maximum applications per day on Wellfound (AngelList startup roles)
+    max_daily_applications: 30
+
 
 # Execution & Display Mode Settings
 execution:
@@ -109,6 +129,48 @@ profile_refresh:
   # Automatically re-uploads your latest resume before daily applying so
   # your profile timestamp updates to 'Active Today' (ranks higher in recruiter searches)
   auto_update_before_apply: true
+
+
+# AI Screening & ATS Optimization (Google Gemini API)
+ai:
+  # Enable dynamic AI answering for open-ended screening questions & tailored cover letters
+  # If false or key is empty, the bot seamlessly falls back to offline regex heuristics.
+  enabled: false
+  # API key (Can also be set via environment variable: export GEMINI_API_KEY="your-key")
+  api_key: ""
+  # Recommended model: gemini-2.5-flash
+  model: "gemini-2.5-flash"
+
+
+# Real-time Phone & Webhook Push Notifications
+notifications:
+  telegram:
+    # Send instant push alerts to your phone via Telegram Bot
+    enabled: false
+    # Create via @BotFather in Telegram
+    bot_token: ""
+    # Get your chat ID from @userinfobot in Telegram
+    chat_id: ""
+
+  discord:
+    # Send application alerts and summaries to a Discord server channel
+    enabled: false
+    # Discord channel Webhook URL
+    webhook_url: ""
+
+
+# Email Recruitment & Interview Tracker (Secure Read-Only IMAP)
+email_tracker:
+  # Automatically scans inbox for HackerRank assessments, test links, and interview invitations
+  enabled: false
+  # IMAP server (e.g., imap.gmail.com, outlook.office365.com)
+  imap_server: "imap.gmail.com"
+  # Your email address
+  email: ""
+  # App-specific password (For Gmail: https://myaccount.google.com/apppasswords)
+  app_password: ""
+  # Days of email history to inspect (default: 7)
+  days_back: 7
 
 
 # Candidate Profile Details for Auto-filling Application Forms

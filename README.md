@@ -2,68 +2,118 @@
 
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 [![Playwright](https://img.shields.io/badge/Playwright-Chromium-green.svg)](https://playwright.dev/)
+[![Google Gemini](https://img.shields.io/badge/AI-Gemini%202.5%20Flash-orange.svg)](https://ai.google.dev/)
 [![SQLite](https://img.shields.io/badge/Database-SQLite3-lightgrey.svg)](https://www.sqlite.org/)
 [![CLI-Rich](https://img.shields.io/badge/CLI-Rich-purple.svg)](https://rich.readthedocs.io/)
+[![Notifications](https://img.shields.io/badge/Push-Telegram%20%2F%20Discord-blueviolet.svg)](https://telegram.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-An intelligent, scheduled Robotic Process Automation (RPA) engine designed to automate end-to-end job discovery and application workflows across **LinkedIn (Easy Apply)**, **Naukri (Direct Apply)**, and **Enterprise ATS Career Portals** (Workday, Greenhouse, Lever, SmartRecruiters, BambooHR, SuccessFactors, etc.) with persistent authentication, anti-bot stealth, and zero-RAM idle scheduling.
+An intelligent, scheduled Robotic Process Automation (RPA) and AI-driven recruitment suite designed to automate end-to-end job discovery, screening question resolution, and application submission across **LinkedIn (Easy Apply)**, **Indeed (Easily Apply)**, **Naukri (Direct Apply)**, **Instahyre (1-Click Tech Apply)**, **Wellfound (AngelList Startups)**, and **Enterprise ATS Career Portals** (Workday, Greenhouse, Lever, SmartRecruiters, BambooHR, SuccessFactors).
+
+Engineered with **Google Gemini 2.5 Flash** for dynamic screening questions, **Anti-Bot Human Cadence Simulation** (organic Bezier curves and typing jitter), **Instant Push Notifications** (Telegram & Discord), **IMAP Email Lifecycle Tracking**, **Staffing Body-Shop Filtering**, and **zero-RAM idle scheduling**.
 
 ---
 
 ## 🏗️ Architecture & Workflow
 
 ```mermaid
-graph TD
-    A[Cron / CLI Trigger] --> B[Load Config & Session Profiles]
-    B --> C[Platform Scanners: LinkedIn / Naukri / ATS]
-    C --> D[Job Freshness & Experience Filter]
-    D -->|Match Found| E[Heuristic Form Filler & Regex Classifier]
-    D -->|Not Eligible| C
-    E --> F{Direct ATS or Quick Apply?}
-    F -->|ATS / Portal| G[Fill-and-Review Confirmation Gate]
-    F -->|Easy Apply| H[Playwright Auto-Submission]
-    G --> H
-    H --> I[Record Submission in SQLite data/jobs.db]
-    I --> J{Daily Quota Reached?}
-    J -->|No| C
-    J -->|Yes| K[Graceful Shutdown & Summary Report]
+flowchart TD
+    A[Cron / CLI Trigger] --> B[Load Config & Persistent Session Profiles]
+    B --> C{Platform Scanners}
+    C -->|LinkedIn| D1[LinkedIn Easy Apply Scanner]
+    C -->|Indeed| D2[Indeed Easily Apply Scanner]
+    C -->|Naukri| D3[Naukri FastForward Scanner]
+    C -->|Instahyre| D4[Instahyre 1-Click Tech Scanner]
+    C -->|Wellfound| D5[Wellfound Startup Scanner]
+    C -->|ATS Direct| D6[Universal ATS Career Portals]
+
+    D1 & D2 & D3 & D4 & D5 & D6 --> E{Job Eligibility Engine}
+    E -->|Staffing Agency Match| E1[Skip: Third-Party Body Shop Filter]
+    E -->|Already Applied / Duplicate| E2[Skip: SQLite ACID Deduplication]
+    E -->|Experience / Keyword Mismatch| E3[Skip: Ineligible Job]
+    
+    E -->|Eligible Job| F[Screening Question Engine]
+    F -->|Heuristic Match| G1[Regex Classifier: CTC / Notice / Experience]
+    F -->|Complex / Open Question| G2[Google Gemini 2.5 Flash AI Agent]
+    
+    G1 & G2 --> H[Anti-Bot Human Cadence Simulator]
+    H --> H1[Organic Bezier Curve Mouse Movement]
+    H --> H2[Randomized Keystroke Timing & Jitter]
+
+    H1 & H2 --> I{Application Flow Type}
+    I -->|Direct Easy Apply| J1[Automated Form Fill & Submission]
+    I -->|External ATS / Portal| J2[Fill-and-Review Confirmation Gate]
+    J2 --> J1
+
+    J1 --> K[(Record in SQLite data/jobs.db)]
+    K --> L[Multi-Channel Notification Dispatcher]
+    L -->|Telegram| L1[Telegram Mobile Push Notification]
+    L -->|Discord| L2[Discord Webhook Alert]
+
+    K --> M{Daily Platform Quota Reached?}
+    M -->|No| C
+    M -->|Yes| N[Graceful Shutdown & Session Summary]
+
+    O[IMAP Email Tracker] -.->|Background / Standalone| P[(Update Assessment & Interview Invites)]
 ```
 
 ---
 
 ## 🌟 Key Capabilities
 
-- **Persistent 2FA Authentication**: Log in once interactively with 2FA/OTP. Your session cookies and storage state are saved locally in `data/browser_profiles/`. Passwords are never stored in plaintext.
-- **Enterprise ATS Support**: Specialized form filling pipelines for:
-  - **Workday**: Account registration, credential input, wizard navigation, and step confirmation.
-  - **Greenhouse**: Demographic EEO handling, split name normalization, and custom dropdowns.
-  - **Lever**: Social URL auto-population (LinkedIn, GitHub, Portfolio) and screening questions.
-  - **SmartRecruiters & BambooHR**: Hidden file input resolution and multi-page review flow.
-  - **Deloitte / SAP SuccessFactors**: Multi-tier login hierarchy and advisory tab bypass.
-- **Intelligent Heuristic Form Filler**:
-  - Contextual regular expression classification for notice periods, numeric CTC, years of skill experience, and work authorizations.
-  - Candidate metadata isolation (ignores posting age like *"5+ days ago"* and card counts like *"10+ applicants"*).
-- **Recruiter Visibility Bump**:
-  - Automatically re-uploads your latest resume before applying to keep your profile marked *"Active Today"*, dramatically increasing recruiter search visibility.
-- **ACID Relational Deduplication**:
-  - Local SQLite database (`data/jobs.db`) permanently tracks job IDs, company names, timestamps, and application statuses to prevent duplicate submissions.
-- **Dual Display & Zero-RAM Scheduling**:
-  - Run with an interactive visible browser or silent headless background execution.
-  - Includes a POSIX crontab script (`run_daily.sh`) that triggers once per day and terminates upon quota limit (uses 0 MB RAM when idle).
+### 1. Multi-Platform Coverage
+- **LinkedIn**: Easy Apply automation, multi-step modal handling, resume auto-selection, and recruiter outreach.
+- **Indeed**: "Easily apply" automation, `indeed-apply-iframe` modal navigation, resume upload/switch, and rate-limit backoff.
+- **Naukri**: Direct application engine, questionnaire resolution, and automatic daily profile update badge bump.
+- **Instahyre**: 1-click curated Indian tech product company applications.
+- **Wellfound (AngelList)**: Targeted startup and remote technology job applications.
+- **Enterprise ATS Portals**: Native DOM form filling pipelines for **Workday**, **Greenhouse**, **Lever**, **SmartRecruiters**, **BambooHR**, and **SAP SuccessFactors / Deloitte**.
+
+### 2. Google Gemini 2.5 Flash AI Agent
+- Resolves non-standard screening questions (e.g. *"Describe your experience with multi-region Kubernetes clusters"*, *"Why are you interested in this role?"*).
+- Auto-generates concise, tailored cover letters matching the candidate profile to the exact job description.
+- Built using Python's standard library REST client—**zero extra pip dependencies** required.
+- Robust fallback: If Gemini is disabled or the API key is absent, the system seamlessly uses contextual regex heuristics.
+
+### 3. Anti-Bot Keystroke & Mouse Trajectory Simulation
+- **Organic Bezier Curves**: Mouse movements follow realistic, randomized Bezier trajectories with variable velocity rather than robotic straight lines.
+- **Micro-Delays & Key Jitter**: Natural typing cadence (25–90ms per key) with deliberate micro-pauses at whitespace and punctuation.
+- **Human Click Offset**: Mouse clicks target varied internal points of interactive elements, avoiding the unnatural geometric center.
+
+### 4. Staffing Body-Shop Exclusion Filter
+- Automatically detects and skips third-party recruitment agencies, consultancies, and body shops (e.g., TeamLease, Randstad, Adecco, Kelly Services, Collabera, etc.) based on company name, title patterns, and description indicators, focusing exclusively on direct corporate hirers.
+
+### 5. Instant Push Notifications (Phone & Desktop)
+- Real-time mobile alerts sent immediately via **Telegram Bot API** or **Discord Webhook** whenever:
+  - A job is successfully submitted (with company, role, location, platform, and total count).
+  - A CAPTCHA or 2FA challenge requires human attention.
+  - Daily application quotas are achieved.
+
+### 6. Email Recruitment & Assessment Lifecycle Tracker
+- Connects securely to your email inbox (e.g., Gmail) via read-only IMAP SSL.
+- Cross-references incoming messages with companies you applied to in `data/jobs.db`.
+- Classifies emails into **Interview Invitations**, **Coding Assessments / Tests**, **Offers**, or **Rejections**, updating your application database automatically.
+
+### 7. ACID Relational Deduplication & Local Profile Security
+- Local SQLite database (`data/jobs.db`) tracks every job ID, platform, URL, company, and submission timestamp.
+- Completely prevents duplicate applications across runs.
+- Browser cookies and storage states remain strictly on your local machine in `data/browser_profiles/`.
 
 ---
 
-## 🧰 Tech Stack & Libraries
+## 🧰 Tech Stack & Architecture
 
-| Technology | Purpose |
-| :--- | :--- |
-| **Python 3.10+** | Core runtime, dataclasses, type hinting, and regex engine. |
-| **Playwright** | Chromium automation, DOM locators, frame isolation, and stealth emulation. |
-| **PyYAML** | Schema validation, YAML parsing, and recursive configuration merging. |
-| **SQLite3** | ACID relational storage for application tracking and deduplication. |
-| **Rich** | Terminal UI, formatted job tables, spinners, and structured status logging. |
-| **Schedule** | In-process timer daemon for continuous automated scheduling. |
-| **Linux POSIX Cron** | System-level scheduling with zero background resource consumption. |
+| Technology | Purpose | Implementation Details |
+| :--- | :--- | :--- |
+| **Python 3.10+** | Core runtime | Modern type hints, dataclasses, standard library networking. |
+| **Playwright** | Browser automation | Chromium CDP automation, stealth flags, shadow DOM, iframes. |
+| **Google Gemini API** | AI screening agent | `gemini-2.5-flash` model via pure Python stdlib REST transport. |
+| **SQLite3** | Relational database | ACID transactions, application deduplication, lifecycle status. |
+| **Rich** | Terminal UI | Beautiful CLI tables, live spinners, panel logs, color-coded statuses. |
+| **PyYAML** | Configuration engine | YAML parsing, schema validation, configuration merging. |
+| **Telegram / Discord** | Real-time alerts | Telegram Bot API and Discord Webhook integration via stdlib HTTP. |
+| **IMAP4 SSL** | Email tracking | Gmail / standard IMAP mail parser for recruitment responses. |
+| **Linux POSIX Cron** | Headless scheduling | Zero background memory consumption when idle. |
 
 ---
 
@@ -75,7 +125,7 @@ git clone https://github.com/Ansh-mishra2000/job-apply-automation.git
 cd job-apply-automation
 ```
 
-### 2. Set Up a Virtual Environment
+### 2. Set Up a Python Virtual Environment
 ```bash
 python3 -m venv .venv
 source .venv/bin/activate
@@ -86,21 +136,21 @@ source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
-### 4. Install Playwright Browser Binaries
+### 4. Install Playwright Chromium Browser
 ```bash
 playwright install chromium
 ```
 
 ---
 
-## ⚙️ Configuration & Document Setup
+## ⚙️ Configuration Guide
 
 ### Step 1: Copy the Template Configuration
 Create your active configuration file from the template:
 ```bash
 cp config.example.yaml config.yaml
 ```
-*(Note: `config.yaml` is ignored by `.gitignore` to keep your personal data completely private on your local machine).*
+*(Note: `config.yaml` is excluded by `.gitignore` so your personal details, credentials, and API keys are never pushed to GitHub).*
 
 ---
 
@@ -108,122 +158,161 @@ cp config.example.yaml config.yaml
 
 > [!IMPORTANT]
 > **Document Format & Location Requirements**:
-> 1. **Format**: All documents **MUST be valid PDF (`.pdf`) format**. Word documents (`.docx`) or text files are not accepted by online ATS portals.
-> 2. **Resume Location**: Place your resume PDF in the project root directory and name it `resume.pdf` (or set `profile.resume_path` in `config.yaml`).
-> 3. **Cover Letter Location**: Place your cover letter PDF in the project root directory named `cover_letter.pdf` (or set `profile.cover_letter_path` in `config.yaml`).
+> 1. **Format**: All documents **MUST be valid PDF (`.pdf`) format**. Word documents (`.docx`) or text files will fail portal validation.
+> 2. **Resume Location**: Place your resume PDF in the project root directory and name it `resume.pdf` (or configure `profile.resume_path` in `config.yaml`).
+> 3. **Cover Letter Location**: Place your cover letter PDF in the project root directory named `cover_letter.pdf` (or configure `profile.cover_letter_path` in `config.yaml`).
 
 ---
 
-### Step 3: Configure `config.yaml` Details
+### Step 3: Configure `config.yaml`
 
-Open `config.yaml` and customize the following key sections:
+Open `config.yaml` and configure your settings:
 
-#### 1. Contact Information
+#### 1. Candidate Profile
 ```yaml
 profile:
-  full_name: "Jane Doe"
-  first_name: "Jane"
-  last_name: "Doe"
-  email: "jane.doe@example.com"
+  full_name: "Alex Mercer"
+  first_name: "Alex"
+  last_name: "Mercer"
+  email: "alex.mercer@example.com"
   phone: "9876543210"
   current_city: "Bengaluru"
   country: "India"
-  linkedin_url: "https://www.linkedin.com/in/janedoe/"
-  github_url: "https://github.com/janedoe"
+  linkedin_url: "https://www.linkedin.com/in/alex-mercer/"
+  github_url: "https://github.com/alexmercer"
+  portfolio_url: "https://alexmercer.dev"
+  
+  # CRITICAL: Compensation MUST be annual numeric integers without text or commas:
+  current_ctc: "800000"          # e.g., 8 LPA in INR
+  expected_ctc: "1600000"        # e.g., 16 LPA in INR
+
+  # Notice period MUST be an integer in DAYS:
+  notice_period_days: 30         # 0 (immediate), 15, 30, 60, 90
 ```
 
-#### 2. Compensation & Notice Period (CRITICAL FORMAT)
+#### 2. Skill Experience Mapping
+Provide numeric years of experience for screening questionnaires:
 ```yaml
-  # MUST be numeric integers in annual currency.
-  # Do NOT use text like "negotiable" or portal validation will fail:
-  current_ctc: "600000"           # 6 LPA in INR
-  expected_ctc: "1200000"         # 12 LPA in INR
-
-  # Notice period MUST be numeric integer in DAYS:
-  notice_period_days: 30          # e.g. 0, 15, 30, 60, 90
+  skills_experience:
+    python: 4
+    aws: 3
+    docker: 3
+    kubernetes: 2
+    terraform: 2
+    ci/cd: 3
+    linux: 4
+    sql: 3
 ```
 
-#### 3. Search Keywords & Locations
+#### 3. Search Keywords & Job Filtering
 ```yaml
 search:
   keywords:
     - "DevOps Engineer"
     - "Site Reliability Engineer"
-    - "Cloud Infrastructure Engineer"
-    - "Kubernetes Engineer"
+    - "Cloud Platform Engineer"
     - "Python Developer"
   locations:
     - "India"
-  experience_years: "0-3"
-  date_posted: "30d"              # '30d', '15d', '7d', '24h'
+    - "Remote"
+  experience_years: "1-4"
+  date_posted: "7d"              # '24h', '7d', '15d', '30d'
+
+filter:
+  exclude_staffing_agencies: true  # Automatically filter out third-party body shops
+  excluded_companies:
+    - "CyberCoders"
+    - "Revature"
 ```
 
-#### 4. Skill Experience Mapping
-Configure specific years of experience per skill for screening questions:
+#### 4. Google Gemini AI Screening Agent (Optional)
 ```yaml
-  skills_experience:
-    aws: 3
-    kubernetes: 2
-    docker: 3
-    terraform: 2
-    python: 3
-    ci/cd: 3
+ai:
+  enabled: true                  # Set to true to enable Gemini dynamic question solving
+  api_key: "YOUR_GEMINI_API_KEY" # Or set GEMINI_API_KEY environment variable
+  model: "gemini-2.5-flash"
+  auto_generate_cover_letters: true
+```
+
+#### 5. Instant Push Notifications (Optional)
+```yaml
+notifications:
+  enabled: true
+  telegram:
+    enabled: true
+    bot_token: "YOUR_TELEGRAM_BOT_TOKEN"    # From @BotFather
+    chat_id: "YOUR_TELEGRAM_CHAT_ID"        # From @userinfobot
+  discord:
+    enabled: false
+    webhook_url: "YOUR_DISCORD_WEBHOOK_URL"
+```
+
+#### 6. Email Application Tracker (Optional)
+```yaml
+email_tracker:
+  enabled: true
+  imap_host: "imap.gmail.com"
+  imap_port: 993
+  email: "alex.mercer@example.com"
+  password: "YOUR_GMAIL_APP_PASSWORD"       # Use Google App Password (not your main password)
+  check_days: 7
 ```
 
 ---
 
 ## 🖥️ Usage Guide
 
-### 1. One-Time Interactive Login (Account Security)
-Run the login command to open browser windows where you can authenticate and solve 2FA/OTP once:
+### 1. One-Time Interactive Login
+Authenticate on your selected platforms once to store persistent sessions:
 ```bash
-# Log into both LinkedIn and Naukri
+# Log into all configured platforms interactively:
 ./.venv/bin/python main.py login
 
-# Or individually:
+# Or log into a specific platform:
 ./.venv/bin/python main.py login --platform linkedin
+./.venv/bin/python main.py login --platform indeed
 ./.venv/bin/python main.py login --platform naukri
+./.venv/bin/python main.py login --platform instahyre
+./.venv/bin/python main.py login --platform wellfound
 ```
-*Your session cookies will be stored locally in `data/browser_profiles/` for all subsequent runs.*
 
 ---
 
 ### 2. Search & Inspect Matching Jobs (Without Applying)
-Preview live job listings with time-freshness filters before triggering auto-apply:
+Preview live listings before applying:
 ```bash
-# View DevOps Engineer jobs posted in the last 30 days:
-./.venv/bin/python main.py list --position "DevOps Engineer" --time 30d
+# Preview DevOps jobs posted in the last 7 days:
+./.venv/bin/python main.py list --position "DevOps Engineer" --time 7d
 
-# Inspect fresh jobs posted in the last 24 hours:
-./.venv/bin/python main.py list --position "Python Developer" --time 24h
+# Search Indeed for SRE roles:
+./.venv/bin/python main.py list --platform indeed --position "Site Reliability Engineer" --time 24h
 
-# Search, view table, and immediately auto-apply:
-./.venv/bin/python main.py list --position "Site Reliability Engineer" --time 7d --apply
+# Preview and apply immediately:
+./.venv/bin/python main.py list --position "Python Developer" --apply
 ```
 
 ---
 
 ### 3. Run Applications
-Launch the automation to apply across platforms until daily quotas are reached:
+Launch the automated job application loop across all or selected platforms:
 ```bash
-# Interactive mode (prompts for Visible or Background execution):
-./.venv/bin/python main.py run
-
-# Explicit visible window (watch the bot in action):
+# Run across all platforms in visible mode:
 ./.venv/bin/python main.py run --visible
 
-# Silent background execution (headless):
+# Run silently in background (headless mode):
 ./.venv/bin/python main.py run --headless
 
 # Target a specific platform:
+./.venv/bin/python main.py run --platform indeed --visible
 ./.venv/bin/python main.py run --platform linkedin --visible
-./.venv/bin/python main.py run --platform naukri --visible
+./.venv/bin/python main.py run --platform instahyre --visible
+./.venv/bin/python main.py run --platform wellfound --visible
 ```
 
 ---
 
-### 4. Direct URL Application
-Apply directly to any supported career portal or job posting URL:
+### 4. Direct ATS URL Application
+Apply directly to any supported career portal URL (Workday, Lever, Greenhouse, etc.):
 ```bash
 ./.venv/bin/python main.py apply-url --url "https://jobs.lever.co/company/job-id" --visible
 ```
@@ -234,53 +323,76 @@ Apply directly to any supported career portal or job posting URL:
 Re-upload your resume to job boards to refresh your *"Profile Updated: Today"* badge:
 ```bash
 ./.venv/bin/python main.py update-resume
+./.venv/bin/python main.py update-resume --platform indeed
 ```
 
 ---
 
-### 6. View Application Telemetry & Stats
-Check daily quota limits and application statistics:
+### 6. Verify AI & Notification Integrations
+Verify your Gemini AI credentials and push notifications:
+```bash
+# Test Google Gemini AI connection & answer generation:
+./.venv/bin/python main.py test-ai
+
+# Send a test push notification to Telegram / Discord:
+./.venv/bin/python main.py test-notify
+```
+
+---
+
+### 7. Track Email Responses & Interviews
+Scan your inbox for interview requests, coding assessments, or status updates:
+```bash
+./.venv/bin/python main.py track-emails
+```
+
+---
+
+### 8. View Application Telemetry & Stats
+View submission counts and platform quota usage:
 ```bash
 ./.venv/bin/python main.py stats
 ```
 
 ---
 
-### 7. Set Up Automated Daily Cron
-Schedule the application to run automatically every morning via Linux `cron`:
+### 9. Scheduled Daily Automation (Cron)
+Configure a daily cron trigger to run headless each morning:
 ```bash
 ./.venv/bin/python main.py cron-setup
 ```
-Alternatively, add it manually to `crontab -e`:
+Manual crontab entry (`crontab -e`):
 ```cron
-30 9 * * * /path/to/job-apply-automation/run_daily.sh --headless
+30 9 * * 1-5 /path/to/job-apply-automation/run_daily.sh --headless
 ```
 
 ---
 
 ## 🧪 Running the Test Suite
 
-The codebase includes an extensive 43-test suite covering ATS DOM filling, job filtering, card metadata isolation, and platform stop conditions:
+The codebase includes an extensive 81-test unit suite covering AI answering, anti-bot simulation, agency filtering, platform drivers, and ATS form engines:
 
 ```bash
-./.venv/bin/python -m unittest discover -s tests -v
+./.venv/bin/python -m unittest discover tests -v
 ```
+
+All 81 tests execute cleanly with zero external network calls via isolated mocks.
 
 ---
 
 ## 🛡️ Privacy & Security Best Practices
 
-- **Zero Credentials in Git**: Passwords, cookies, session states, and `config.yaml` are strictly ignored by `.gitignore`.
-- **Local SQLite Storage**: Your applied job history is stored locally in `data/jobs.db` and is never sent to external servers.
-- **Fill-and-Review Mode**: External ATS applications default to `auto_submit: false`, which pauses on the review screen so you can verify answers before submitting.
+- **Zero Credentials in Git**: Passwords, cookies, session states, `data/jobs.db`, resumes, and `config.yaml` are strictly ignored by `.gitignore`.
+- **Local SQLite Storage**: Your application records remain entirely private on your own system.
+- **Fill-and-Review Safety Gate**: External ATS applications default to review mode so you can inspect generated responses before final submission.
 
 ---
 
 ## ⚖️ Disclaimer
 
-This software is developed for **educational, research, and personal automation purposes only**. 
-- Users are responsible for complying with the Terms of Service of each respective platform (LinkedIn, Naukri, Workday, etc.).
-- The developers assume no liability for account restrictions, rate limits, or misuse of this tool. Always use human-like delays (`human_delay_min` and `human_delay_max`) and respect daily platform limits.
+This software is developed for **educational, research, and personal automation purposes only**.
+- Users are responsible for complying with the Terms of Service of each respective platform.
+- The developers assume no liability for account restrictions or misuse. Use realistic human delays and respect daily platform limits.
 
 ---
 

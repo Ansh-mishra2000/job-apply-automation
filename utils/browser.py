@@ -115,3 +115,75 @@ class BrowserManager:
         for _ in range(scrolls):
             page.evaluate(f"window.scrollBy({{top: {distance}, behavior: 'smooth'}})")
             time.sleep(random.uniform(0.8, 1.6))
+
+    @staticmethod
+    def human_type(locator: Locator, text: str, min_delay_ms: int = 25, max_delay_ms: int = 90):
+        """
+        Types text with realistic human keystroke intervals, micro-pauses at spaces,
+        and natural typing rhythm to bypass anti-automation velocity detection.
+        """
+        if not text:
+            return
+
+        try:
+            # First focus the element and clear existing text
+            locator.click(timeout=3000)
+            time.sleep(random.uniform(0.1, 0.25))
+
+            # If text is long (e.g. cover letter / long paragraph), use faster batched typing
+            if len(text) > 80:
+                locator.fill(text)
+                return
+
+            if hasattr(locator, "press_sequentially"):
+                # Natural typing with randomized delay
+                avg_delay = random.randint(min_delay_ms, max_delay_ms)
+                locator.press_sequentially(text, delay=avg_delay)
+            else:
+                for char in text:
+                    locator.type(char, delay=random.randint(min_delay_ms, max_delay_ms))
+                    if char in (" ", ",", "."):
+                        time.sleep(random.uniform(0.08, 0.18))
+        except Exception:
+            # Fallback to direct fill if typing simulation fails
+            try:
+                locator.fill(text)
+            except Exception:
+                pass
+
+    @staticmethod
+    def human_move_and_click(page: Page, locator: Locator):
+        """
+        Moves mouse towards target element with curved trajectory and non-centered coordinate
+        before clicking, simulating authentic human motor interaction.
+        """
+        try:
+            box = locator.bounding_box()
+            if box and hasattr(page, "mouse"):
+                # Target an organic point within the element (not dead center)
+                pad_x = box["width"] * random.uniform(0.25, 0.75)
+                pad_y = box["height"] * random.uniform(0.3, 0.7)
+                target_x = box["x"] + pad_x
+                target_y = box["y"] + pad_y
+
+                # Intermediate organic jitter step
+                jitter_x = target_x + random.uniform(-15, 15)
+                jitter_y = target_y + random.uniform(-10, 10)
+                page.mouse.move(jitter_x, jitter_y, steps=random.randint(4, 8))
+                time.sleep(random.uniform(0.05, 0.12))
+
+                # Final move to target
+                page.mouse.move(target_x, target_y, steps=random.randint(3, 5))
+                time.sleep(random.uniform(0.08, 0.2))
+                page.mouse.down()
+                time.sleep(random.uniform(0.04, 0.1))
+                page.mouse.up()
+                return
+
+            # Fallback
+            locator.click()
+        except Exception:
+            try:
+                locator.click(force=True)
+            except Exception:
+                pass

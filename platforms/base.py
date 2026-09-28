@@ -6,6 +6,7 @@ from abc import ABC, abstractmethod
 from typing import Any, Dict, List, Optional
 from database import JobDatabase
 from utils.logger import logger
+from utils.notifier import NotificationManager
 
 
 class BasePlatform(ABC):
@@ -15,6 +16,7 @@ class BasePlatform(ABC):
         self.db = db
         self.headless = headless
         self.limit_reached = self.db.is_daily_limit_reached(self.name)
+        self.notifier = NotificationManager(self.config)
 
     @abstractmethod
     def login(self):

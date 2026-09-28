@@ -248,3 +248,27 @@ class JobDatabase:
                 "total_all_time": total_applied,
                 "today": today_stats,
             }
+
+    def update_application_status(self, company: str, status: str, reason: str = "") -> int:
+        """Updates the status (e.g. interview_invite, assessment_received, rejected) for a company's applied jobs."""
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                """
+                UPDATE applications
+                SET status = ?, reason = ?, timestamp = ?
+                WHERE LOWER(company) LIKE ?
+                """,
+                (status, reason, datetime.now().isoformat(), f"%{company.lower().strip()}%"),
+            )
+            conn.commit()
+            return cursor.rowcount
+
+    def get_distinct_applied_companies(self) -> List[str]:
+        """Returns a list of distinct company names that have been applied to."""
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                "SELECT DISTINCT company FROM applications WHERE status = 'applied' AND company IS NOT NULL"
+            )
+            return [row["company"] for row in cursor.fetchall() if row["company"]]

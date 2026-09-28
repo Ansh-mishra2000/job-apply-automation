@@ -12,6 +12,7 @@ from urllib.parse import quote_plus
 from playwright.sync_api import Locator, Page
 
 from platforms.base import BasePlatform
+from utils.ai_agent import AIAgent
 from utils.browser import BrowserManager
 from utils.form_filler import FormFiller
 from utils.job_filter import (
@@ -33,7 +34,8 @@ class LinkedInPlatform(BasePlatform):
         self.max_daily = self.linkedin_cfg.get("max_daily_applications", 50)
         self.exclude_skills = self.config.get("search", {}).get("exclude_skills", [])
         self.cv_skills = self.config.get("profile", {}).get("cv_skills", [])
-        self.form_filler = FormFiller(self.config.get("profile", {}))
+        self.ai_agent = AIAgent(self.config)
+        self.form_filler = FormFiller(self.config.get("profile", {}), ai_agent=self.ai_agent)
         self.ats_handler = ExternalATSHandler(self.config)
 
     def login(self):

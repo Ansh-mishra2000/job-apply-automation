@@ -10,8 +10,9 @@ from utils.logger import logger
 
 
 class FormFiller:
-    def __init__(self, profile_config: Dict[str, Any]):
+    def __init__(self, profile_config: Dict[str, Any], ai_agent: Optional[Any] = None):
         self.profile = profile_config
+        self.ai_agent = ai_agent
         self.skills_exp = {
             k.lower().strip(): v for k, v in self.profile.get("skills_experience", {}).items()
         }
@@ -216,6 +217,18 @@ class FormFiller:
         if re.search(r"numeric|number|years|count", text):
             return "2"
 
+        if self.ai_agent and getattr(self.ai_agent, "is_available", lambda: False)():
+            try:
+                ai_ans = self.ai_agent.answer_screening_question(
+                    question_text=label_text,
+                    job_title=job_title,
+                    company=company,
+                )
+                if ai_ans:
+                    return ai_ans
+            except Exception:
+                pass
+
         return None
 
     def get_radio_choice(self, question_text: str) -> str:
@@ -355,6 +368,17 @@ class FormFiller:
             for o in opts_clean:
                 if o.lower().startswith(choice.lower()):
                     return o
+
+        if self.ai_agent and getattr(self.ai_agent, "is_available", lambda: False)():
+            try:
+                ai_choice = self.ai_agent.answer_screening_question(
+                    question_text=question_text,
+                    options=candidate_options,
+                )
+                if ai_choice:
+                    return ai_choice
+            except Exception:
+                pass
 
         return opts_clean[0]
 

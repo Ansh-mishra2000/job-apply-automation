@@ -56,5 +56,8 @@ class AppLogger:
         console.print(f"[step]➔ [STEP][/step] {msg}")
         self._file_logger.info(f"[STEP] {msg}")
 
+    def debug(self, msg: str):
+        self._file_logger.debug(msg)
+
 
 logger = AppLogger()

@@ -20,6 +20,7 @@ from typing import Any, Dict, List, Optional
 from urllib.parse import urlparse
 
 from playwright.sync_api import Locator, Page, TimeoutError as PlaywrightTimeoutError
+from utils.ai_agent import AIAgent
 from utils.form_filler import FormFiller
 from utils.logger import logger
 
@@ -34,7 +35,8 @@ class ExternalATSHandler:
         profile_with_pwd = dict(self.profile)
         if "account_password" not in profile_with_pwd:
             profile_with_pwd["account_password"] = self.account_password
-        self.form_filler = FormFiller(profile_with_pwd)
+        self.ai_agent = AIAgent(self.config)
+        self.form_filler = FormFiller(profile_with_pwd, ai_agent=self.ai_agent)
 
     def detect_ats(self, url: str, page: Optional[Page] = None) -> str:
         """

@@ -550,3 +550,70 @@ def is_posted_within_window(posted_text: str, time_filter: str = "24h") -> bool:
     return days <= max_days
 
 
+AGENCY_TEXT_PATTERNS = [
+    r"hiring\s+for\s+(?:our|a|one\s+of\s+our)\s+(?:prestigious|tier[\s-]?1|reputed|leading|esteemed|fortune\s+500|mnc)?\s*clients?",
+    r"third[\s-]?party\s+payroll",
+    r"3rd[\s-]?party\s+payroll",
+    r"\bc2h\b",
+    r"contract[\s-]to[\s-]hire",
+    r"on\s+our\s+client'?s?\s+payroll",
+    r"deputed\s+at\s+(?:our\s+)?client",
+    r"staffing\s+solutions?",
+    r"manpower\s+consultancy",
+    r"placement\s+consultanc(?:y|ies)",
+]
+
+AGENCY_NAME_PATTERNS = [
+    r"\bstaffing\b",
+    r"\brecruit(?:ment|ers|ing)?\s+(?:solutions?|services?|consultants?|group|firm)\b",
+    r"\bmanpower\b",
+    r"\bplacement\s+services?\b",
+    r"\bhr\s+(?:solutions?|services?|consultants?)\b",
+    r"\btalent\s+(?:solutions?|acquisitions?|partners?|search)\b",
+    r"\bworkforce\s+solutions?\b",
+]
+
+LEGIT_EMPLOYER_WHITELIST = {
+    "deloitte", "pwc", "ey", "kpmg", "mckinsey", "bain", "bcg",
+    "accenture", "tcs", "infosys", "wipro", "cognizant", "capgemini",
+    "ibm", "hcltech", "hcl", "tech mahindra", "l&t", "ltimindtree"
+}
+
+
+def is_staffing_agency(
+    company_name: str,
+    job_text: str = "",
+    custom_blacklist: Optional[List[str]] = None,
+) -> bool:
+    """
+    Identifies whether a posting is from a third-party recruitment agency,
+    contract body-shop, or C2H recruiter rather than a direct hiring company.
+    """
+    c_clean = str(company_name or "").lower().strip()
+    t_clean = str(job_text or "").lower()
+
+    # If company is explicitly in whitelist, allow it
+    for legit in LEGIT_EMPLOYER_WHITELIST:
+        if legit in c_clean:
+            return False
+
+    # Check custom blacklist first
+    if custom_blacklist:
+        for b in custom_blacklist:
+            if b.lower().strip() in c_clean or b.lower().strip() in t_clean:
+                return True
+
+    # 1. Check description text for agency/C2H phrasing
+    for pattern in AGENCY_TEXT_PATTERNS:
+        if re.search(pattern, t_clean):
+            return True
+
+    # 2. Check company name patterns
+    for pattern in AGENCY_NAME_PATTERNS:
+        if re.search(pattern, c_clean):
+            return True
+
+    return False
+
+
+
