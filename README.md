@@ -5,12 +5,12 @@
 [![Google Gemini](https://img.shields.io/badge/AI-Gemini%202.5%20Flash-orange.svg)](https://ai.google.dev/)
 [![SQLite](https://img.shields.io/badge/Database-SQLite3-lightgrey.svg)](https://www.sqlite.org/)
 [![CLI-Rich](https://img.shields.io/badge/CLI-Rich-purple.svg)](https://rich.readthedocs.io/)
-[![Notifications](https://img.shields.io/badge/Push-Telegram%20%2F%20Discord-blueviolet.svg)](https://telegram.org/)
+[![Notifications](https://img.shields.io/badge/Push-WhatsApp-25D366.svg?logo=whatsapp&logoColor=white)](https://www.whatsapp.com/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 An intelligent, scheduled Robotic Process Automation (RPA) and AI-driven recruitment suite designed to automate end-to-end job discovery, screening question resolution, and application submission across **LinkedIn (Easy Apply)**, **Indeed (Easily Apply)**, **Naukri (Direct Apply)**, **Instahyre (1-Click Tech Apply)**, **Wellfound (AngelList Startups)**, and **Enterprise ATS Career Portals** (Workday, Greenhouse, Lever, SmartRecruiters, BambooHR, SuccessFactors).
 
-Engineered with **Google Gemini 2.5 Flash** for dynamic screening questions, **Anti-Bot Human Cadence Simulation** (organic Bezier curves and typing jitter), **Instant Push Notifications** (Telegram & Discord), **IMAP Email Lifecycle Tracking**, **Staffing Body-Shop Filtering**, and **zero-RAM idle scheduling**.
+Engineered with **Google Gemini 2.5 Flash** for dynamic screening questions, **Anti-Bot Human Cadence Simulation** (organic Bezier curves and typing jitter), **Instant WhatsApp Mobile Alerts**, **IMAP Email Lifecycle Tracking**, **Staffing Body-Shop Filtering**, and **zero-RAM idle scheduling**.
 
 ---
 
@@ -46,9 +46,8 @@ flowchart TD
     J2 --> J1
 
     J1 --> K[(Record in SQLite data/jobs.db)]
-    K --> L[Multi-Channel Notification Dispatcher]
-    L -->|Telegram| L1[Telegram Mobile Push Notification]
-    L -->|Discord| L2[Discord Webhook Alert]
+    K --> L[WhatsApp Push Notification Dispatcher]
+    L -->|CallMeBot / Twilio| L1[Instant WhatsApp Alert to Mobile]
 
     K --> M{Daily Platform Quota Reached?}
     M -->|No| C
@@ -83,8 +82,8 @@ flowchart TD
 ### 4. Staffing Body-Shop Exclusion Filter
 - Automatically detects and skips third-party recruitment agencies, consultancies, and body shops (e.g., TeamLease, Randstad, Adecco, Kelly Services, Collabera, etc.) based on company name, title patterns, and description indicators, focusing exclusively on direct corporate hirers.
 
-### 5. Instant Push Notifications (Phone & Desktop)
-- Real-time mobile alerts sent immediately via **Telegram Bot API** or **Discord Webhook** whenever:
+### 5. Instant WhatsApp Mobile Push Notifications
+- Real-time alerts sent directly to your personal **WhatsApp** (via free CallMeBot API or Twilio) whenever:
   - A job is successfully submitted (with company, role, location, platform, and total count).
   - A CAPTCHA or 2FA challenge requires human attention.
   - Daily application quotas are achieved.
@@ -111,7 +110,7 @@ flowchart TD
 | **SQLite3** | Relational database | ACID transactions, application deduplication, lifecycle status. |
 | **Rich** | Terminal UI | Beautiful CLI tables, live spinners, panel logs, color-coded statuses. |
 | **PyYAML** | Configuration engine | YAML parsing, schema validation, configuration merging. |
-| **Telegram / Discord** | Real-time alerts | Telegram Bot API and Discord Webhook integration via stdlib HTTP. |
+| **WhatsApp** | Real-time alerts | Instant mobile alerts via free CallMeBot API or Twilio Programmable Messaging. |
 | **IMAP4 SSL** | Email tracking | Gmail / standard IMAP mail parser for recruitment responses. |
 | **Linux POSIX Cron** | Headless scheduling | Zero background memory consumption when idle. |
 
@@ -234,17 +233,23 @@ ai:
   auto_generate_cover_letters: true
 ```
 
-#### 5. Instant Push Notifications (Optional)
+#### 5. Instant WhatsApp Mobile Push Notifications (Optional)
 ```yaml
 notifications:
   enabled: true
-  telegram:
+  whatsapp:
     enabled: true
-    bot_token: "YOUR_TELEGRAM_BOT_TOKEN"    # From @BotFather
-    chat_id: "YOUR_TELEGRAM_CHAT_ID"        # From @userinfobot
-  discord:
-    enabled: false
-    webhook_url: "YOUR_DISCORD_WEBHOOK_URL"
+    # Your phone number with country code (e.g. "+919876543210")
+    phone: "+919876543210"
+    # Free CallMeBot API key (takes 10 seconds):
+    # Send "I allow callmebot to send me messages" to +34 941 83 20 62 on WhatsApp
+    api_key: "YOUR_CALLMEBOT_API_KEY"
+
+    # (Optional) Twilio WhatsApp credentials if you prefer Twilio:
+    twilio_account_sid: ""
+    twilio_auth_token: ""
+    twilio_from: "whatsapp:+14155238886"
+    twilio_to: ""
 ```
 
 #### 6. Email Application Tracker (Optional)
@@ -334,7 +339,7 @@ Verify your Gemini AI credentials and push notifications:
 # Test Google Gemini AI connection & answer generation:
 ./.venv/bin/python main.py test-ai
 
-# Send a test push notification to Telegram / Discord:
+# Send a test push notification to your personal WhatsApp:
 ./.venv/bin/python main.py test-notify
 ```
 
@@ -370,7 +375,7 @@ Manual crontab entry (`crontab -e`):
 
 ## 🧪 Running the Test Suite
 
-The codebase includes an extensive 81-test unit suite covering AI answering, anti-bot simulation, agency filtering, platform drivers, and ATS form engines:
+The codebase includes an extensive 82-test unit suite covering AI answering, anti-bot simulation, agency filtering, platform drivers, WhatsApp notifications, and ATS form engines:
 
 ```bash
 ./.venv/bin/python -m unittest discover tests -v

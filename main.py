@@ -945,29 +945,33 @@ def execute_test_ai():
 
 
 def execute_test_notify():
-    """Tests mobile push alerts via Telegram and Discord."""
+    """Tests mobile push alerts via WhatsApp."""
     from utils.notifier import NotificationManager
     config = load_config()
     notifier = NotificationManager(config)
-    console.print(Panel("[bold]Mobile & Webhook Push Notification Diagnostics[/bold]", border_style="cyan"))
+    console.print(Panel("[bold]WhatsApp Mobile Push Notification Diagnostics[/bold]", border_style="cyan"))
     if not notifier.is_enabled():
         logger.warning(
-            "Push notifications are currently disabled.\n"
-            "To enable phone alerts:\n"
-            "  • Telegram: Set 'enabled: true', provide 'bot_token' and 'chat_id' in config.yaml\n"
-            "  • Discord: Set 'enabled: true' and provide 'webhook_url' in config.yaml"
+            "WhatsApp push notifications are currently disabled or not configured.\n"
+            "To enable free WhatsApp alerts:\n"
+            "  1. In config.yaml, set 'notifications.enabled: true' and 'notifications.whatsapp.enabled: true'\n"
+            "  2. Add your phone number with country code (e.g., 'phone: \"+919876543210\"')\n"
+            "  3. Get your free CallMeBot API key in 10 seconds:\n"
+            "     • Send 'I allow callmebot to send me messages' to +34 941 83 20 62 on WhatsApp\n"
+            "     • Paste the received API key into 'notifications.whatsapp.api_key: \"YOUR_KEY\"'\n"
+            "  (Optional: Twilio WhatsApp or Custom Webhooks are also supported)"
         )
     else:
-        logger.step("Sending test notification...")
+        logger.step("Sending test notification to your WhatsApp...")
         ok = notifier.send_message(
             "This is a test notification from your Autonomous Job Application Suite! 🚀\n"
             "Everything is configured correctly and ready to send live job updates.",
-            title="🔔 Notification Test Passed",
+            title="🔔 *WhatsApp Notification Test Passed*",
         )
         if ok:
-            logger.success("Test notification delivered successfully! Check your phone / channel.")
+            logger.success("Test notification delivered successfully! Check your WhatsApp.")
         else:
-            logger.error("Failed to deliver test notification. Check token/chat_id/webhook.")
+            logger.error("Failed to deliver WhatsApp test message. Check your phone number / API key.")
 
 
 def execute_track_emails():
@@ -1264,7 +1268,7 @@ def main():
     subparsers.add_parser("test-ai", help="Test Gemini AI screening question resolver and connectivity")
 
     # 12. test-notify command
-    subparsers.add_parser("test-notify", help="Test Telegram and Discord push notification delivery")
+    subparsers.add_parser("test-notify", help="Test WhatsApp mobile push notification delivery")
 
     # 13. track-emails command
     subparsers.add_parser("track-emails", help="Scan candidate inbox for recruiter interview invites and coding test links")
